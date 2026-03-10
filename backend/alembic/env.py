@@ -30,8 +30,8 @@ def run_migrations_offline():
         context.run_migrations()
 
 def run_migrations_online():
+    config.set_main_option("sqlalchemy.url", get_url() or "")
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
