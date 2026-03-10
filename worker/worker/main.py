@@ -8,7 +8,7 @@ from sqlalchemy import select
 from worker.db import SessionLocal
 from worker.models import Car
 
-BASE_URL = os.environ.get("CARSENSOR_URL", "https://carsensor.net")
+BASE_URL = os.environ.get("CARSENSOR_URL", "https://www.carsensor.net")
 LIST_URL = os.environ.get("CARSENSOR_LIST_URL", f"{BASE_URL}/cars")
 CRON = os.environ.get("WORKER_CRON", "*/15 * * * *")
 

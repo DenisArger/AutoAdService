@@ -8,5 +8,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+ENV PYTHONPATH=/app
 
-CMD ["sh", "-c", "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 3000"]
+CMD ["sh", "-c", "PYTHONPATH=/app alembic upgrade head && PYTHONPATH=/app python -m app.seed && PYTHONPATH=/app uvicorn app.main:app --host 0.0.0.0 --port 3000"]

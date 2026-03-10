@@ -61,3 +61,5 @@ curl -X POST http://localhost:3000/api/login \
 - Парсер использует HTML‑разметку и может требовать подстройки селекторов под фактическую структуру `carsensor.net`.
 - Админ создаётся автоматически при старте backend на основе `.env`.
 - Если нет доступа к LLM, укажите это в `.env` или запросите ключ.
+  
+Если `carsensor.net` отдаёт 404, проверьте `CARSENSOR_URL` и `CARSENSOR_LIST_URL` в `.env` (по умолчанию используется `https://www.carsensor.net`).
