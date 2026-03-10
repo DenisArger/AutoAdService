@@ -9,7 +9,7 @@ from worker.db import SessionLocal
 from worker.models import Car
 
 BASE_URL = os.environ.get("CARSENSOR_URL", "https://www.carsensor.net")
-LIST_URL = os.environ.get("CARSENSOR_LIST_URL", f"{BASE_URL}/")
+LIST_URL = os.environ.get("CARSENSOR_LIST_URL", f"{BASE_URL}/usedcar/index.html")
 CRON = os.environ.get("WORKER_CRON", "*/15 * * * *")
 
 COLOR_PATTERN = re.compile(
@@ -36,6 +36,7 @@ def fetch_with_retry(url: str, attempts: int = 3):
         try:
             res = requests.get(url, timeout=15)
             res.raise_for_status()
+            res.encoding = res.apparent_encoding
             return res.text
         except Exception as err:
             last_err = err
@@ -115,7 +116,7 @@ def scrape_once():
             if car:
                 cars.append(car)
         if not cars:
-            print("No cars parsed. Check selectors for carsensor.net")
+            print("No cars parsed. Check selectors for carsensor.net", flush=True)
             return
         db = SessionLocal()
         try:
@@ -123,13 +124,13 @@ def scrape_once():
                 upsert_car(db, car)
         finally:
             db.close()
-        print(f"Scraped and upserted {len(cars)} cars")
+        print(f"Scraped and upserted {len(cars)} cars", flush=True)
     except Exception as err:
-        print(f"Scrape failed: {err}")
+        print(f"Scrape failed: {err}", flush=True)
 
 def main():
     interval = sleep_seconds()
-    print(f"Worker started. Interval: {interval}s")
+    print(f"Worker started. Interval: {interval}s", flush=True)
     while True:
         scrape_once()
         time.sleep(interval)
