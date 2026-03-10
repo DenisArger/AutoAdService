@@ -9,7 +9,7 @@ from worker.db import SessionLocal
 from worker.models import Car
 
 BASE_URL = os.environ.get("CARSENSOR_URL", "https://www.carsensor.net")
-LIST_URL = os.environ.get("CARSENSOR_LIST_URL", f"{BASE_URL}/cars")
+LIST_URL = os.environ.get("CARSENSOR_LIST_URL", f"{BASE_URL}/")
 CRON = os.environ.get("WORKER_CRON", "*/15 * * * *")
 
 COLOR_PATTERN = re.compile(
@@ -45,42 +45,52 @@ def fetch_with_retry(url: str, attempts: int = 3):
 def normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
-def parse_cars(html: str):
+def extract_detail_links(html: str):
     soup = BeautifulSoup(html, "html.parser")
-    items = []
-    candidates = soup.select(".car-item, .listing-item, article, .listing, .item")
-    blocks = candidates if candidates else soup.find_all("a")
-
-    for el in blocks:
-        url = None
-        link = el if el.name == "a" else el.find("a")
-        if link and link.get("href"):
-            url = link.get("href")
-        if not url or url.startswith("javascript:"):
+    links = set()
+    for a in soup.select('a[href*="/usedcar/detail/"]'):
+        href = a.get("href")
+        if not href:
             continue
-        if url.startswith("/"):
-            url = f"{BASE_URL}{url}"
+        if href.startswith("/"):
+            href = f"{BASE_URL}{href}"
+        if "carsensor.net/usedcar/detail/" in href:
+            links.add(href.split("?")[0])
+    return list(links)
 
-        text = normalize_text(el.get_text(" "))
-        brand_model = re.search(r"([A-Za-zА-Яа-я]+)\s+([A-Za-zА-Яа-я0-9-]+)", text)
-        year_match = re.search(r"(19\d{2}|20\d{2})", text)
-        price_match = re.search(r"(\d{3,9})", text.replace(" ", ""))
-        color_match = COLOR_PATTERN.search(text)
+def parse_car_detail(html: str, url: str):
+    soup = BeautifulSoup(html, "html.parser")
+    h1 = soup.find("h1")
+    if not h1:
+        return None
+    title = normalize_text(h1.get_text(" "))
 
-        if not brand_model or not year_match or not price_match:
-            continue
+    color = "unknown"
+    color_match = re.search(r"[（(]([^）)]+)[）)]", title)
+    if color_match:
+        color = color_match.group(1)
 
-        brand = brand_model.group(1)
-        model = brand_model.group(2)
-        year = int(year_match.group(1))
-        price = int(price_match.group(1))
-        color = color_match.group(1) if color_match else "unknown"
+    title_no_color = re.sub(r"[（(].*?[）)]", "", title).strip()
+    parts = title_no_color.split()
+    if len(parts) < 2:
+        return None
+    brand = parts[0]
+    model = parts[1]
 
-        items.append(
-            {"brand": brand, "model": model, "year": year, "price": price, "color": color, "url": url}
-        )
+    text = normalize_text(soup.get_text(" "))
+    year_match = re.search(r"年式\s*([0-9]{4})", text)
+    if not year_match:
+        return None
+    year = int(year_match.group(1))
 
-    return items
+    price_match = re.search(r"車両本体価格.*?([0-9]+(?:\.[0-9])?)\s*万円", text)
+    if not price_match:
+        price_match = re.search(r"本体価格\s*([0-9]+(?:\.[0-9])?)\s*万円", text)
+    if not price_match:
+        return None
+    price = int(float(price_match.group(1)) * 10000)
+
+    return {"brand": brand, "model": model, "year": year, "price": price, "color": color, "url": url}
 
 def upsert_car(db, car):
     existing = db.execute(select(Car).where(Car.url == car["url"])).scalar_one_or_none()
@@ -97,7 +107,13 @@ def upsert_car(db, car):
 def scrape_once():
     try:
         html = fetch_with_retry(LIST_URL, 3)
-        cars = parse_cars(html)
+        links = extract_detail_links(html)
+        cars = []
+        for link in links[:20]:
+            detail_html = fetch_with_retry(link, 3)
+            car = parse_car_detail(detail_html, link)
+            if car:
+                cars.append(car)
         if not cars:
             print("No cars parsed. Check selectors for carsensor.net")
             return
