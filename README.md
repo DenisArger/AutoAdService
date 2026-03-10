@@ -14,6 +14,7 @@ cp .env.example .env
 
 - `TELEGRAM_BOT_TOKEN`
 - `OPENAI_API_KEY`
+- `VEDAI_API_KEY` (альтернатива `OPENAI_API_KEY`)
 - `OPENAI_BASE_URL` (если используете совместимый OpenAI API, например `https://vedai.by/api/v1`)
 
 3. Запуск:
@@ -64,3 +65,28 @@ curl -X POST http://localhost:3000/api/login \
 - Если нет доступа к LLM, укажите это в `.env` или запросите ключ.
   
 Если `carsensor.net` отдаёт 404, проверьте `CARSENSOR_URL` и `CARSENSOR_LIST_URL` в `.env` (по умолчанию используется `https://www.carsensor.net`).
+
+## Финальная проверка (для сдачи)
+
+1. Запуск:
+```bash
+docker compose up --build
+```
+
+2. Проверка API:
+```bash
+curl -X POST http://localhost:3000/api/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@example.com","password":"admin123"}'
+```
+
+3. Проверка фронта:
+- Откройте `http://localhost:3001`
+- Войдите `admin@example.com / admin123`
+
+4. Проверка воркера:
+- Убедитесь в логах `worker` что есть `Scraped and upserted ... cars`
+
+5. Проверка бота:
+- Напишите боту в Telegram `/start`
+- Пример: `Найди Nissan` / `Найди Дайхатсу до 1 млн`
