@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from openai import OpenAI
 from sqlalchemy import select
 from telegram import Update
@@ -11,11 +12,17 @@ from bot.models import Car
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 
-if not TELEGRAM_BOT_TOKEN:
-    raise RuntimeError("TELEGRAM_BOT_TOKEN is required")
+def wait_for_token():
+    print("TELEGRAM_BOT_TOKEN is not set or is a placeholder. Bot will idle.")
+    while True:
+        time.sleep(3600)
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "your_bot_token":
+    wait_for_token()
+
+client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
 tools = [
     {

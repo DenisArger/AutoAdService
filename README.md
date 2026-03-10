@@ -14,6 +14,7 @@ cp .env.example .env
 
 - `TELEGRAM_BOT_TOKEN`
 - `OPENAI_API_KEY`
+- `OPENAI_BASE_URL` (если используете совместимый OpenAI API, например `https://vedai.by/api/v1`)
 
 3. Запуск:
 
