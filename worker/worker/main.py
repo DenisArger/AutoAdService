@@ -30,14 +30,29 @@ def parse_interval_minutes(cron_expr: str) -> int:
 def sleep_seconds():
     return parse_interval_minutes(CRON) * 60
 
+def decode_response(res: requests.Response) -> str:
+    header = res.headers.get("content-type", "")
+    if "charset=" in header:
+        charset = header.split("charset=")[-1].split(";")[0].strip()
+        try:
+            return res.content.decode(charset)
+        except Exception:
+            pass
+    for enc in ["utf-8", "shift_jis", "euc_jp", "iso2022_jp"]:
+        try:
+            return res.content.decode(enc)
+        except Exception:
+            continue
+    res.encoding = res.apparent_encoding
+    return res.text
+
 def fetch_with_retry(url: str, attempts: int = 3):
     last_err = None
     for i in range(attempts):
         try:
             res = requests.get(url, timeout=15)
             res.raise_for_status()
-            res.encoding = res.apparent_encoding
-            return res.text
+            return decode_response(res)
         except Exception as err:
             last_err = err
             time.sleep(2 ** i)
